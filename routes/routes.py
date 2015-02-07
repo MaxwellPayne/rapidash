@@ -4,21 +4,22 @@ from bottle import get, post, request
 
 def inject_dependencies(app, auth, database):
     
-    Favor = app.models['Favor']
+    Author = app.models.Author
+    Book = app.models.Book
 
     @app.route('/hello', method='GET')
     def hello_world():
         return 'Hello World'
 
-    @app.get('/favor/:id')
+    @app.get('/authors/:id')
     def favor(id):
-        fav = Favor.objects(id=id).first()
-        return fav.to_json()
+        author = Author.objects(id=id).first()
+        return author.to_json()
 
-    @app.get('/newfavor')
+    @app.get('/newauthor')
     def newfavor():
         rand = random.randint(0, 110000)
         print rand
-        fav = Favor(name='Randomly %d' % rand)
-        fav.save()
+        a = Author(name='Randomly %d' % rand)
+        a.save()
         return 'created'
