@@ -1,10 +1,7 @@
 from gevent import monkey; monkey.patch_all()
 import json, os, glob, imp
 import bottle, mongoengine, gevent
-from bottle import route, request, abort
-from cork import Cork
-from cork.mongodb_backend import MongoDBBackend
-        
+
 
 class RapidashApp(bottle.Bottle):
     class JSObject:
@@ -29,30 +26,55 @@ class RapidashApp(bottle.Bottle):
     def register_controller(self, controller):
         self.controllers.set_property(controller.__name__, controller)
 
+
 if __name__ == '__main__':
+    auth_module = imp.load_source('auth_module', os.path.join('auth', 'auth.py'))
+
     config_dict = {}
     """Configure"""
     with open(os.path.join('config', 'dev.json'), 'r') as config_file:
-        config_dict = json.load(config_file, encoding='ascii')
+        config_dict = json.load(config_file)
         # reformat to ascii
         config_dict = {str(key): str(config_dict[key]) for key in config_dict.keys()}
-    
-    backend = MongoDBBackend(db_name=config_dict['db_name'])
-    auth = Cork(backend=backend)
+
+    secret_path = os.path.join('config', '.secret.json')
+    if os.path.exists(secret_path):
+        with open(secret_path, 'r') as secret_config_file:
+            # my facebook app info kept secret for development purposes
+            config_dict.update(json.load(secret_config_file))
+
+    # coerce json strings to ascii
+    config_dict = {str(k): (str(v) if isinstance(v, unicode) else v) for k, v in config_dict.iteritems()}
+    config_dict['base_url'] = 'https://%s:%s' % (config_dict['hostname'], config_dict['port'])
+
+    class SSLGeventServer(bottle.GeventServer):
+        """Subclass of Bottle's default GeventServer, servers https instead of http"""
+        def __init__(self, host='127.0.0.1', port=8080, **options):
+            # @important: add SSL config here to make this a true SSL server
+            cert_path = os.path.join('config', config_dict['ssl_cert'])
+            key_path = os.path.join('config', config_dict['ssl_key'])
+            options.update(keyfile=key_path, certfile=cert_path)
+            options.update(ssl_version=2)
+            super(SSLGeventServer, self).__init__(host, port, **options)
+            self.options = options
+
+    auth = auth_module
     app = RapidashApp()
     db = mongoengine.connect(config_dict['db_name'], host='localhost')
 
     app.config.load_dict(config_dict)
 
+
     """Register routes from all modules in the routes/ directory"""
-    search_paths = map(lambda dirname: os.path.join(dirname, '*.py'), ['models', 'routes'])
+    search_paths = map(lambda dirname: os.path.join(dirname, '*.py'), ['auth', 'models', 'controllers', 'routes'])
     scripts = reduce(lambda found_scripts, search_path: found_scripts + glob.glob(search_path), search_paths, [])
 
     print scripts
     for script_path in scripts:
         routefile = imp.load_source('routefile', script_path)
-        routefile.inject_dependencies(app, auth, db)
+        if hasattr(routefile, 'inject_dependencies'):
+            routefile.inject_dependencies(app, auth, db, dict(config_dict))
 
-    """Start the app"""
-    app.run(host='localhost', server='gevent', port=8000)
+
+    app.run(host=config_dict['hostname'], server=SSLGeventServer, port=config_dict['port'])
 

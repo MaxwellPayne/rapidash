@@ -1,6 +1,6 @@
 import mongoengine
 
-def inject_dependencies(app, auth, database):
+def inject_dependencies(app, auth, database, config):
     
     """Example Models"""
     class Author(mongoengine.Document):

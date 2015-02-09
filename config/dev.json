@@ -1,3 +1,9 @@
 {
-"db_name": "rapidash-dev"
+    "db_name": "rapidash-dev",
+    "facebook_app_id": "YOUR_APPID_HERE",
+    "facebook_app_secret": "YOUR_APPSECRET_HERE",
+    "ssl_cert": "cert.pem",
+    "ssl_key": "key.pem",
+    "hostname": "localhost",
+    "port": 80
 }

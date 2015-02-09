@@ -2,10 +2,13 @@ import random
 import bson.json_util as bson_util
 from bottle import get, post, request
 
-def inject_dependencies(app, auth, database):
+def inject_dependencies(app, auth, database, config):
     
     Author = app.models.Author
     Book = app.models.Book
+
+    AuthorController = app.controllers.AuthorController
+
 
     @app.route('/hello', method='GET')
     def hello_world():
