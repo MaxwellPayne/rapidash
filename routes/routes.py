@@ -2,6 +2,7 @@ import random
 import bson.json_util as bson_util
 from bottle import get, post, request
 
+
 def inject_dependencies(app, auth, database, config):
     
     Author = app.models.Author
@@ -26,3 +27,8 @@ def inject_dependencies(app, auth, database, config):
         a = Author(name='Randomly %d' % rand)
         a.save()
         return 'created'
+
+    @app.get('/authrequired')
+    @auth.authentication_required
+    def authrequired():
+        return 'Successfully passed Auth test'

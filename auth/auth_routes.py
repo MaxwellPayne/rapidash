@@ -1,4 +1,4 @@
-import json, datetime
+import datetime
 import termcolor
 import bottle
 from requests_oauthlib import OAuth2Session
@@ -11,6 +11,7 @@ def inject_dependencies(app, auth, database, config):
     class FBState(object):
         """State strings associated to their Facebook sessions
         Expire after 30 seconds for session security"""
+        # @issue - all_states never garbage collects old, neglected session keys
         all_states = dict()
 
         def __init__(self, state_string, fb_session):
@@ -56,12 +57,16 @@ def inject_dependencies(app, auth, database, config):
             token_url = 'https://graph.facebook.com/oauth/access_token'
 
             # Fetch the access token
-            saved_session.fetch_token(token_url, client_secret=config['facebook_app_secret'],
-                                      authorization_response=request.url)
+            token = saved_session.fetch_token(token_url, client_secret=config['facebook_app_secret'],
+                                              authorization_response=request.url)
 
-                    # Fetch a protected resource, i.e. user profile
+            # Fetch a protected resource, i.e. user profile
             r = saved_session.get('https://graph.facebook.com/me?')
-            return r
+
+            # @unsure - how does creating vs. just authenticating user work here?
+            new_user = auth.User.from_json(r.text, provider='facebook', token=token)
+            #new_user.save()
+            return new_user.to_json()
 
         else:
             # failed authentication
