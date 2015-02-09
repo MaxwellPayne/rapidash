@@ -91,3 +91,13 @@ def authentication_required(request_handler):
 
     return decorated
 
+def attach_user(request_handler):
+    """Load user profile from db, attach it to the request before processing regularly"""
+    raise NotImplementedError()
+
+    def decorated():
+        # database read here
+        request.params['attached_user'] = {}
+        request_handler()
+
+    return decorated
